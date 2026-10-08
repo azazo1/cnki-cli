@@ -58,6 +58,11 @@ cnki sentence 大语言模型 医学影像 --paragraph
 # 作者发文
 cnki author 张三 --org 清华大学
 
+# 在上一轮结果中收窄, 对应知网的"结果中检索"
+cnki search 深度学习 --limit 50
+cnki refine --cond '作者单位=清华大学'
+cnki refine --cond '基金=国家自然科学基金'
+
 # 分组聚合
 cnki group 大语言模型 --group year --group discipline
 

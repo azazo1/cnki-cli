@@ -132,6 +132,7 @@ func (a *app) newRootCmd() *cobra.Command {
 		a.newExprCmd(),
 		a.newSentenceCmd(),
 		a.newAuthorCmd(),
+		a.newRefineCmd(),
 		a.newGroupCmd(),
 		a.newDetailCmd(),
 		a.newExportCmd(),

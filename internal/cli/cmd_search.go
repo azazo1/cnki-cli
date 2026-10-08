@@ -136,6 +136,14 @@ func (a *app) runSearch(cmd *cobra.Command, q *cnki.Query, flags *searchFlags) e
 		result.Groups = groups
 	}
 
+	// 记录本次检索式, 供 cnki refine 接续.
+	//
+	// 写盘失败只影响"结果中检索"这个便利功能, 不该让已经拿到的检索结果作废,
+	// 因此只记警告. 翻页会改动页码, 这里先归位到第一页再存, 便于下次接续.
+	if err := recordLastQuery(q); err != nil {
+		rt.Logger.Warn("记录检索式失败, cnki refine 将无法接续", "err", err)
+	}
+
 	rt.Logger.Info("检索完成",
 		"检索式", result.Query,
 		"命中", result.Total,
@@ -156,6 +164,12 @@ func (a *app) runSearch(cmd *cobra.Command, q *cnki.Query, flags *searchFlags) e
 		return output.RenderGroups(a.opts.Stdout, format, result.Groups)
 	}
 	return nil
+}
+
+// recordLastQuery 把检索式归位到第一页并记录下来.
+func recordLastQuery(q *cnki.Query) error {
+	q.SetPage(1)
+	return cnki.SaveLastQuery(q)
 }
 
 // newSearchCmd 构造一框式检索命令.

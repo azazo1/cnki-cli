@@ -226,23 +226,21 @@ func SimpleQuery(keyword string, field string, opts SearchOptions) (*Query, erro
 	}, nil
 }
 
-// AdvancedQuery 构造高级检索.
+// buildConditionItems 把检索条件翻译成知网的检索项.
 //
-// 多个条件之间按各自携带的 Logic 组合, 语义与知网高级检索的多行条件一致.
-func AdvancedQuery(conditions []Condition, opts SearchOptions) (*Query, error) {
-	if len(conditions) == 0 {
-		return nil, apperr.Usage("高级检索至少需要一个检索条件")
-	}
+// 返回的 items 直接用于 QueryJson, parts 是人类可读的检索式描述.
+// 高级检索与结果中检索共用这段逻辑, 以免两处对同一条件产生不同解释.
+func buildConditionItems(conditions []Condition) ([]QueryItem, []string, error) {
 	items := make([]QueryItem, 0, len(conditions))
 	parts := make([]string, 0, len(conditions))
 	for i, cond := range conditions {
 		value := strings.TrimSpace(cond.Value)
 		if value == "" {
-			return nil, apperr.Usage("第 %d 个检索条件的检索词为空", i+1)
+			return nil, nil, apperr.Usage("第 %d 个检索条件的检索词为空", i+1)
 		}
 		f, ok := taxonomy.LookupField(cond.Field)
 		if !ok {
-			return nil, apperr.Usage("第 %d 个检索条件使用了未知字段 %q", i+1, cond.Field)
+			return nil, nil, apperr.Usage("第 %d 个检索条件使用了未知字段 %q", i+1, cond.Field)
 		}
 		operator := cond.Operator
 		if !cond.CustomOperator {
@@ -260,6 +258,20 @@ func AdvancedQuery(conditions []Condition, opts SearchOptions) (*Query, error) {
 			parts = append(parts, cond.Logic.Symbol())
 		}
 		parts = append(parts, fmt.Sprintf("%s=%s", f.Name, value))
+	}
+	return items, parts, nil
+}
+
+// AdvancedQuery 构造高级检索.
+//
+// 多个条件之间按各自携带的 Logic 组合, 语义与知网高级检索的多行条件一致.
+func AdvancedQuery(conditions []Condition, opts SearchOptions) (*Query, error) {
+	if len(conditions) == 0 {
+		return nil, apperr.Usage("高级检索至少需要一个检索条件")
+	}
+	items, parts, err := buildConditionItems(conditions)
+	if err != nil {
+		return nil, err
 	}
 	return &Query{
 		searchType: taxonomy.SearchAdv,
@@ -420,6 +432,15 @@ func (q *Query) Options() SearchOptions { return q.opts }
 
 // SetPage 修改页码, 用于翻页复用同一个检索式.
 func (q *Query) SetPage(page int) { q.opts.Page = page }
+
+// SetPageSize 修改每页条数.
+func (q *Query) SetPageSize(size int) { q.opts.PageSize = size }
+
+// SetSort 修改排序方式.
+func (q *Query) SetSort(field string, kind string) {
+	q.opts.SortField = field
+	q.opts.SortType = kind
+}
 
 // QueryJSON 渲染知网要求的 QueryJson 结构.
 func (q *Query) QueryJSON() QueryJSON {
