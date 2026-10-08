@@ -3,6 +3,8 @@ package cnki
 import (
 	"strings"
 	"testing"
+
+	"github.com/PuerkitoBio/goquery"
 )
 
 // 下列 fixture 按知网真实响应结构裁剪而成, 只保留解析器关心的部分.
@@ -283,5 +285,59 @@ func TestDetailPathNormalization(t *testing.T) {
 		if got := detailPath(input); got != want {
 			t.Errorf("地址规整错误: 输入 %q, 期望 %q, 实际 %q", input, want, got)
 		}
+	}
+}
+
+// TestParseSearchResultReportsRejection 校验知网拒绝请求时不再静默返回空结果.
+//
+// 知网用同一个 p.no-content 同时表达"无结果"与"拒绝请求", 区别在于拒绝时
+// 它把原因写在 value 属性里. 若不区分, 用户会把检索式写错误认为是没有匹配.
+func TestParseSearchResultReportsRejection(t *testing.T) {
+	rejected := `<div id="briefBox"><p class="no-content" value="查询对象结构错误, 没有指定检索分类！">抱歉，暂无数据，请稍后重试。</p></div>`
+
+	_, err := ParseSearchResult(rejected, 1, 20)
+	if err == nil {
+		t.Fatal("知网拒绝请求时应报错, 而不是当作空结果返回")
+	}
+	// 错误信息必须带上知网的原话, 否则用户无从判断哪里写错了.
+	if !strings.Contains(err.Error(), "没有指定检索分类") {
+		t.Errorf("错误信息应包含知网给出的原因, 实际: %v", err)
+	}
+}
+
+// TestParseSearchResultMalformedCarriesContext 校验结构无法识别时的错误信息带够上下文.
+//
+// 只有一句"知网可能已改版"无法区分改版, 被拦截与需要登录, 因此要求把
+// 响应体的特征一并带出.
+func TestParseSearchResultMalformedCarriesContext(t *testing.T) {
+	page := `<html><head><title>访问受限</title></head><body><p>请求过于频繁</p></body></html>`
+
+	_, err := ParseSearchResult(page, 1, 20)
+	if err == nil {
+		t.Fatal("结构无法识别时应报错")
+	}
+
+	message := err.Error()
+	for _, want := range []string{"访问受限", "字节", "请求过于频繁"} {
+		if !strings.Contains(message, want) {
+			t.Errorf("错误信息缺少 %q, 实际: %s", want, message)
+		}
+	}
+}
+
+// TestFirstHintValueSkipsFormControls 校验诊断信息不会取到表单控件的取值.
+func TestFirstHintValueSkipsFormControls(t *testing.T) {
+	// 表单控件的 value 是正常数据, 不能当成知网的提示.
+	page := `<html><body>
+		<input type="hidden" id="classid" value="WD0FTY92">
+		<p value="真正的提示">正文</p>
+	</body></html>`
+
+	doc, err := goquery.NewDocumentFromReader(strings.NewReader(page))
+	if err != nil {
+		t.Fatalf("构造文档失败: %v", err)
+	}
+	if got := firstHintValue(doc); got != "真正的提示" {
+		t.Errorf("应跳过表单控件取到真正的提示, 实际 %q", got)
 	}
 }

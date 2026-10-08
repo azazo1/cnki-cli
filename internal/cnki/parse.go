@@ -1,6 +1,7 @@
 package cnki
 
 import (
+	"fmt"
 	"regexp"
 	"strconv"
 	"strings"
@@ -54,11 +55,17 @@ func ParseSearchResult(html string, page int, pageSize int) (*model.SearchResult
 
 	table := doc.Find(selResultTable).First()
 	if table.Length() == 0 {
-		// 空结果时知网只返回一句提示, 这属于正常情况而非错误.
-		if doc.Find(selNoContent).Length() > 0 {
+		// 知网的提示元素同时用于两种情况: 正常的"无结果"与它对请求的拒绝.
+		// 拒绝时原因写在 value 属性里, 例如 value="查询对象结构错误！"。
+		// 若不加区分地返回空结果, 用户会以为是自己检索词没命中, 而实际上
+		// 是检索式有问题, 这种静默失败会让排查变得很困难.
+		if node := doc.Find(selNoContent).First(); node.Length() > 0 {
+			if reason := noContentReason(node); reason != "" {
+				return nil, apperr.Remote("知网拒绝了该检索请求: %s", reason)
+			}
 			return result, nil
 		}
-		return nil, apperr.Remote("结果页中未找到结果表格, 知网可能已改版")
+		return nil, apperr.Remote("结果页结构无法识别 (%s)", describePage(doc, html))
 	}
 
 	offset := (page - 1) * pageSize
@@ -166,6 +173,77 @@ func isDisplayed(sel *goquery.Selection) bool {
 		return false
 	}
 	return true
+}
+
+// noContentReason 取出知网在提示元素里给出的拒绝原因.
+//
+// 知网用同一个 p.no-content 同时表达两种情况: 正常的"无结果"与它拒绝
+// 这次请求. 拒绝时原因写在 value 属性里, 例如 value="查询对象结构错误！";
+// 正常无结果时 value 为空. 返回空串表示这是正常的无结果.
+func noContentReason(node *goquery.Selection) string {
+	return normalizeText(node.AttrOr("value", ""))
+}
+
+// shortPageBytes 是判定"短页面"的阈值.
+//
+// 正常结果页有上百 KB, 而错误页与提示页通常只有几 KB, 短页面直接把可见
+// 文本带进错误信息, 有助于一眼看出知网到底返回了什么.
+const shortPageBytes = 4096
+
+// describePage 提取响应体的可诊断特征, 供解析失败时定位原因.
+//
+// 只说"未找到结果表格"无法区分是知网改版, 被限流, 还是需要登录, 因此把
+// 最能说明问题的几处特征抽出来: 长度, 标题, 知网的提示文本与短页面正文.
+func describePage(doc *goquery.Document, html string) string {
+	parts := []string{fmt.Sprintf("长度 %d 字节", len(html))}
+
+	if title := normalizeText(doc.Find("title").First().Text()); title != "" {
+		parts = append(parts, fmt.Sprintf("标题 %q", title))
+	}
+
+	if hint := firstHintValue(doc); hint != "" {
+		parts = append(parts, fmt.Sprintf("提示 %q", hint))
+	}
+
+	if len(html) <= shortPageBytes {
+		if text := normalizeText(doc.Text()); text != "" {
+			parts = append(parts, fmt.Sprintf("正文 %q", clipRunes(text, 160)))
+		}
+	}
+
+	return strings.Join(parts, ", ")
+}
+
+// firstHintValue 找出页面上第一个带内容的非表单 value 属性.
+//
+// 知网习惯把错误原因放在 value 里, 但表单控件 (input 等) 的 value 是
+// 正常数据, 需要排除, 否则会取到 classid 这类无关取值.
+func firstHintValue(doc *goquery.Document) string {
+	var hint string
+	doc.Find("[value]").EachWithBreak(func(_ int, sel *goquery.Selection) bool {
+		switch goquery.NodeName(sel) {
+		case "input", "button", "select", "textarea", "option":
+			return true
+		}
+		value := normalizeText(sel.AttrOr("value", ""))
+		if value == "" {
+			return true
+		}
+		hint = value
+		return false
+	})
+	return hint
+}
+
+// clipRunes 按字符数截断文本.
+//
+// 按字节切会切出无效 UTF-8, 中文会变成乱码, 因此按 rune 处理.
+func clipRunes(text string, limit int) string {
+	runes := []rune(text)
+	if len(runes) <= limit {
+		return text
+	}
+	return string(runes[:limit]) + "..."
 }
 
 // normalizeText 压缩空白并去掉首尾空格.
