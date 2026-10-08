@@ -22,7 +22,7 @@ const PathArticleAbstract = "/kcms2/article/abstract"
 // target 可以是完整详情页地址, 也可以是 /kcms2/article/abstract 路径,
 // 还可以是单独的 v 参数值.
 func (c *Client) Detail(ctx context.Context, target string) (*model.Article, error) {
-	path := detailPath(target)
+	path := DetailPath(target)
 	if path == "" {
 		return nil, apperr.Usage("无法识别的详情页地址 %q", target)
 	}
@@ -38,8 +38,10 @@ func (c *Client) Detail(ctx context.Context, target string) (*model.Article, err
 	return article, nil
 }
 
-// detailPath 把各种形式的详情页标识规整为请求路径.
-func detailPath(target string) string {
+// DetailPath 把各种形式的详情页标识规整为请求路径.
+//
+// 接受完整详情页地址, 以 / 开头的路径, 以及裸的 v 参数. 无法识别时返回空串.
+func DetailPath(target string) string {
 	target = strings.TrimSpace(target)
 	if target == "" {
 		return ""

@@ -282,7 +282,7 @@ func TestDetailPathNormalization(t *testing.T) {
 		"abc":                                               "/kcms2/article/abstract?v=abc",
 	}
 	for input, want := range cases {
-		if got := detailPath(input); got != want {
+		if got := DetailPath(input); got != want {
 			t.Errorf("地址规整错误: 输入 %q, 期望 %q, 实际 %q", input, want, got)
 		}
 	}

@@ -69,6 +69,11 @@ cnki group 大语言模型 --group year --group discipline
 # 文献详情
 cnki detail '<详情页地址或 v 参数>'
 
+# 全文下载 (需要订阅权限或登录个人账号)
+cnki download '<详情页地址>'
+cnki download '<地址1>' '<地址2>' --format caj --out ~/papers
+cnki search 深度学习 --limit 5 --json | jq -r '.articles[].detail_url' | xargs cnki download
+
 # 题录导出
 cnki export 深度学习 --export-format bibtex --limit 20 --out refs.bib
 cnki export 深度学习 --export-format ris --limit 50

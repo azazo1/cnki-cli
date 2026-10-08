@@ -135,6 +135,7 @@ func (a *app) newRootCmd() *cobra.Command {
 		a.newRefineCmd(),
 		a.newGroupCmd(),
 		a.newDetailCmd(),
+		a.newDownloadCmd(),
 		a.newExportCmd(),
 		a.newInfoCmd(),
 		a.newConfigCmd(),

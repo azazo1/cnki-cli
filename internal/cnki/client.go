@@ -164,19 +164,29 @@ func (c *Client) Get(ctx context.Context, path string, query url.Values) (*Respo
 	if len(query) > 0 {
 		target = path + "?" + query.Encode()
 	}
-	return c.do(ctx, http.MethodGet, target, nil, "")
+	return c.do(ctx, http.MethodGet, target, nil, "", "")
+}
+
+// getWithReferer 发起 GET 请求并指定 Referer.
+//
+// 全文下载落在 bar.cnki.net, 与检索站点不同域, 这类资源服务常校验来源,
+// 因此允许调用方把详情页地址作为 Referer 传进来.
+func (c *Client) getWithReferer(ctx context.Context, target string, referer string) (*Response, error) {
+	return c.do(ctx, http.MethodGet, target, nil, "", referer)
 }
 
 // PostForm 发起表单 POST 请求.
 func (c *Client) PostForm(ctx context.Context, path string, form url.Values) (*Response, error) {
-	return c.do(ctx, http.MethodPost, path, form, FormContentType)
+	return c.do(ctx, http.MethodPost, path, form, FormContentType, "")
 }
 
 // FormContentType 是知网表单接口使用的 Content-Type.
 const FormContentType = "application/x-www-form-urlencoded; charset=UTF-8"
 
 // do 是统一的请求执行入口, 负责限速, 请求头, 以及验证跳转识别.
-func (c *Client) do(ctx context.Context, method, path string, form url.Values, contentType string) (*Response, error) {
+//
+// referer 为空时使用知网检索站点的地址, 非空时使用调用方给出的地址.
+func (c *Client) do(ctx context.Context, method, path string, form url.Values, contentType string, referer string) (*Response, error) {
 	var body io.Reader
 	if form != nil {
 		body = strings.NewReader(form.Encode())
@@ -194,7 +204,11 @@ func (c *Client) do(ctx context.Context, method, path string, form url.Values, c
 	req.Header.Set("User-Agent", c.userAgent)
 	req.Header.Set("Accept", "*/*")
 	req.Header.Set("Accept-Language", "zh-CN,zh;q=0.9,en;q=0.8")
-	req.Header.Set("Referer", c.baseURL+"/kns8s/")
+	if referer != "" {
+		req.Header.Set("Referer", referer)
+	} else {
+		req.Header.Set("Referer", c.baseURL+"/kns8s/")
+	}
 	req.Header.Set("X-Requested-With", "XMLHttpRequest")
 	if contentType != "" {
 		req.Header.Set("Content-Type", contentType)

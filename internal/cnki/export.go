@@ -18,12 +18,6 @@ const DocumentManageHost = "https://kns.cnki.net/dm8"
 // PathExport 是题录导出接口地址.
 const PathExport = "/manage/export.html"
 
-// PathDownloadOrder 是全文下载的下单地址前缀.
-//
-// 知网不直接给出文件地址, 而是先跳转到 bar.cnki.net 生成一次下载订单,
-// 由订单再换回真实的 PDF 或 CAJ 地址.
-const PathDownloadOrder = "https://bar.cnki.net/bar/download/order"
-
 // ExportRequest 描述一次题录导出请求.
 type ExportRequest struct {
 	// DisplayMode 是知网导出格式标识, 见 taxonomy.ExportFormats.
@@ -158,13 +152,6 @@ func BuildSearchInfo(dbName string, condition string) string {
 	}
 	condition = strings.TrimSpace(condition)
 	return "1!" + dbName + "!>" + condition
-}
-
-// DownloadOrderURL 拼装全文下载下单地址.
-//
-// orderID 来自结果页下载按钮的 id 参数, 同样无法自行构造.
-func DownloadOrderURL(orderID string) string {
-	return PathDownloadOrder + "?id=" + url.QueryEscape(orderID)
 }
 
 // ExtractExportBody 从知网导出结果页中抽取题录正文.
