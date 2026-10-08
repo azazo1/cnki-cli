@@ -7,6 +7,7 @@
 #   uv run --no-project python scripts/dist.py
 
 import os
+import shutil
 
 import release_common as rc
 
@@ -17,6 +18,8 @@ BINARY_NAME = "cnki"
 PACKAGE_VERSION = "0.0.0"
 # 冒烟检查用的参数, 要求二进制能报出版本号.
 SMOKE_ARGS = ["--version"]
+# 除二进制外要一并放进归档的文件, 不存在的会被跳过.
+EXTRA_ARCHIVE_FILES = ["README.md", "LICENSE"]
 
 # go env GOOS / GOARCH 到产物命名 token 的映射.
 PLATFORM_BY_GOOS = {"darwin": "macos", "linux": "linux", "windows": "windows"}
@@ -72,9 +75,18 @@ def main():
     )
 
     rc.smoke_check([binary_path], SMOKE_ARGS, display_version)
+
+    # 归档里带上许可证与用法说明: MIT 要求随副本附带版权声明, 而解压后能
+    # 直接看到说明对使用者也更方便. 源码与 go.mod 一律不打进归档.
+    extras = []
+    for name in EXTRA_ARCHIVE_FILES:
+        if os.path.isfile(name):
+            shutil.copy2(name, os.path.join(staging, name))
+            extras.append(name)
+
     rc.archive(
         staging,
-        [binary],
+        [binary, *extras],
         PROJECT_NAME,
         archive_version,
         target=(target_platform, target_arch),
