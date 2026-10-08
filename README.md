@@ -147,16 +147,6 @@ macOS 上 Chrome 无法在受限沙箱内运行 (会直接 `Abort trap`), 表现
 - `session.on_expired`: 会话失效时的行为, `relogin` / `fail` / `prompt`.
   脚本环境建议用 `fail`, 避免自动化流程意外卡在等人工验证上.
 
-## 依赖代理
-
-本机 `proxy.golang.org` 可能不可达, 请统一使用国内代理:
-
-```shell
-GOPROXY=https://goproxy.cn,direct go mod download
-```
-
-`just deps` 与 `just tidy` 已经内置该设置.
-
 ## 开发
 
 ```shell

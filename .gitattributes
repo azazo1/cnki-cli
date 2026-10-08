@@ -1,0 +1,12 @@
+# 统一按 LF 检出, 避免 Windows runner 上 git 把文本文件转成 CRLF,
+# 导致 gofmt 把整个仓库都判为未格式化.
+* text=auto eol=lf
+
+# 二进制与归档文件不做行尾转换.
+*.png binary
+*.jpg binary
+*.gif binary
+*.ico binary
+*.zip binary
+*.tar.gz binary
+*.exe binary

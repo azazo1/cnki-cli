@@ -15,3 +15,7 @@
 # 会话与凭证绝不入库
 /session.json
 *.cookie
+
+# Python 字节码缓存, 发布脚本运行时自动生成
+__pycache__/
+*.pyc
