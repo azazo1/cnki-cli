@@ -1,6 +1,9 @@
 # 构建产物
 /bin/
 /dist/
+# 直接在仓库根目录执行 go build ./cmd/cnki 时会留下同名二进制
+/cnki
+/cnki.exe
 
 # 本地临时目录
 /.tmp/
