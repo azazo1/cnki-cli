@@ -1,0 +1,49 @@
+# cnki-cli 配置文件
+#
+# 位置: ~/.config/cnki-cli/config.toml
+# 可用环境变量 CNKI_CONFIG_DIR 指定其它目录.
+#
+# schema_version 用于配置迁移, 请勿手工改动.
+
+schema_version = 1
+
+[request]
+# 相邻两次请求的最小间隔毫秒数. 知网对高频访问会弹滑块验证,
+# 默认 1500 毫秒是稳妥值; 追求速度可以调小, 但被验证拦截的概率会上升.
+interval_ms = 1500
+# 单次请求超时秒数.
+timeout_sec = 30
+# 失败重试次数.
+retries = 2
+# 请求使用的浏览器标识, 留空使用内置默认值.
+user_agent = ""
+# 知网主站地址, 一般无需修改.
+base_url = "https://kns.cnki.net"
+
+[output]
+# 默认输出格式: table / json / csv / markdown.
+format = "table"
+# 每次向知网请求的记录条数, 只支持 10 / 20 / 50.
+page_size = 20
+# 单条命令默认取回的记录上限.
+limit = 20
+
+[browser]
+# Chrome 可执行文件路径. 留空时按平台常见位置自动探测,
+# 也可以用环境变量 CNKI_CHROME_PATH 指定.
+chrome_path = ""
+# 是否无头启动. 需要人工完成滑块验证, 因此必须保持 false.
+headless = false
+# 等待人工完成验证的超时秒数.
+verify_timeout_sec = 300
+# 接管一个已开启远程调试的浏览器实例, 而不是新开窗口.
+# 适合日常浏览器里已经登录过知网的场景. 留空表示不使用.
+# 可只写端口号, 例如 "9222".
+cdp_url = ""
+
+[session]
+# 会话失效时的行为:
+#   relogin  自动打开受控浏览器重新验证 (默认)
+#   fail     直接报错退出, 适合脚本环境
+#   prompt   先询问再决定
+on_expired = "relogin"
